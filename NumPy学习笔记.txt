@@ -1,0 +1,68 @@
+NumPy学习笔记（一） 2011-01-07 11:16:26
+
+读的是NumPy User Guide Release 1.3，官方另有一本Reference，600多页，还是先读这个省事儿的。
+凡例：a. [float]表示对象类型是float，用时不用加'['和']'。b. 代码中的跳格表示换行。
+
+Chap 2 NumPy Basics
+
+1. import numpy as np，沿用之，很喜欢np这个名字，呵呵
+
+2. np支持的数据类型：int8, int16, int32, int64, unit8（无符号的整数，unit8是0～255）, unit16~64, float32, 64, complex64, 128, boolean。字母表示数字类型（dtype），后面的数字表示位数，即数值在内存中所占的bit的数目（不明白～）。还有int, float和complex，其位数取决于平台类型，即16或者32位，complex也是，不过因为是两个float表示的，所以位数是64或者128。还有更高级的类型。
+
+3. 转换数据类型：y=np.int_([1,2,3])，返回一个np的array。
+
+4. 生成array时指定数据类型：z=np.arange(3,dtype='f'/float)，推荐后一种写法。此处虽然写的float，但np会自动把dtype转换成np.flaot。z的转换有两种做法，或者通过类方法：z.astype(int8)，或者通过函数：np.int8(z)。
+
+5. 查看数据类型。也有两种做法，或通过类方法：z.dtype()，或通过函数：np.dtype(z)，或者np.issubtype(d,int)，返回bool值。
+
+6. 创建array的五种方法：a. 从list转换（tuple特殊对待，不转换，见26）；b. 内建函数创建（arange，ones，zeros（这个构建structured array时常用，见30）等等）；c. 从文件读取；d. 直接从raw bytes构建（啥意思？）；e. 借助某些库里的函数生成。
+
+7. 通过转换生成array：x=np.array([1,2,3],[4,5,6])
+
+8. 通过内建方法生成array：np.zeros((2,3))，返回array([0,0,0],[0,0,0])，即维度为2*3的矩阵。
+
+9. arange，类似range，参数可以是小数或者负数，很实用！
+
+10. np.linspaces，规定起点、终点（包含）、返回array的长度，返回一个两端点间数值平均分布的array。
+
+11. np.indices没看懂，似乎某些情况下可以很有用。
+
+12. 直接从文件读取需借用其他库里的方法，不熟，过。
+
+13. x.shape = (2,5)，指定维度，相当于R里的c(2,5) <- dim(x)。也可以这样用：y = x.reshape(5,7)。
+
+14. array indexing和slicing跟Python里的一样也是从0开始的。不同的是如果用index array去做reference的话返回的是一个复本，而不是目标array里的原数。这个原则适用于下面的数值和mask index array。这个特性使得赋值（assignment）运算有点奇特，见24。
+
+15. 说到indexing，记一笔前几天新学到的逆序排列的一招：x[::-1]，其中x不限于list，只要是能slice的都行。其原理是x[[int1]:[int2]:[int3]]，其中int1是起点，int2终点（不包含），int3是步长，负数则表示倒着来。如果int3<0 and int1
+
+16. array indexing的输入对象也要求是一个array，比如：x[np.array([3, 3, 1, 8])]。也可以是：x[np.array([[1,1],[2,3]])]，返回一个同样维度的array。
+
+17. 多维array的indexing比较麻烦一些，个人认为基本方法就不大直观：y[np.array([0,2,4]), np.array([0,1,2])]返回的是y[0,0]，y[2,1]和y[4,2]。
+
+18. 当然可能也有好处，比如如果取一行/列就为其中每个数指定行/列数，因为有自动broadcasting（不知道啥意思，猜测不止扩展或补齐的意思）功能：y[np.array([0,2,4]), 1]。
+
+19. 不指定某一个维度的index则取该维度所有值，如：y[np.array([0,2,4])]，返回array的shape是index array的shape串联上所有没指定的维度的部分的shape。如这个例子中，y = np.arange(35).reshape(5,7)，shape是5*7，没有指定第二个维度则返回array的shape是3（index array的shape）*7（所有没指定的维度的部分，即第二个维度，的shape）。
+
+20. array数据筛选。我管这个叫filtering，User Guide上叫mask index arrays。一个指功用，一个指手段。用法：y[y>=20]，跟R里的用法一样。也可以绕一点，b=y>20，这样生成一个dtype=bool的array，然后又套在y里：y[b]。还可以对b进行slicing，作为index array指定位置，如：y[b[:,5]]，其中b[:,5]返回第一维度不限，第二维度是5的array，由于y是5*7的，返回array长度是5，shape是5*1。把这个array作为index array对y筛值，由于是个一维array，对于y来说第二维没有指定，所以取全部的。b是array([False, False, False, True, True], dtype=bool)，所以仅取第一维度的最后两个，对于二维array来说就是最后两行，每行7个数，返回的是一个2*7的array。好绕啊，要是多于2维估计我就晕了~
+
+21. index array和slicing的混搭：y[np.array([0,2,4]),1:3]，工作原理还是跟index array的差不多，只不过1:3这个部分对第一个array里的每个数所代表的行都起作用（broadcast了）。也可以跟mask index array一起混搭。
+
+22. 插入维度：y[:,np.newaxis,:].shape成了(5,1,7)。新增的维度里面没有元素，但运算时行为遵照新的array的适用原则，合并array时很有用：（x原为1*5的array）x[:,np.newaxis] + x[np.newaxis,:] ，返回的是一个5*5的array。不然得赋值z，再指定z的shape等等，较为麻烦。还有一种比较无语的写法：（z的shape是(3,3,3,3)）z[1,...,2]，相当于z[1,:,:,2]。（懒惰是向上的车轮！）
+
+23. array slice赋值，跟Python差不多，需要注意的是每个array都有自己的dtype，赋值类型不符的话会“降级”或者干脆“出乱子”（raise exception啦）。
+
+24. 赋值（assignment）的时候和reference时不一样，总是array里的原数发生变化（不然还赋个啥劲儿的呀），不过规则有点奇特。比如：x[np.array([1, 1, 3, 1]) += 1，array并非直接赋值，而是先被提取出来（extracted），然后逐个赋值，然后assign回去，在1这个位置的那个值被赋值3次，每次都是+=1之后的那个值，所以结果是1和3位置的值+=1。纠结呀~
+
+25. 也可以将index array赋值给变量，然后用变量做indexing，就像20里的那样。可以混搭，可以懒人：indices = (1, Ellipsis, 1)，然后z[indices]
+
+26. list和tuple做indexing结果是不一样的，比如z[(1,1,1,1)]相当于z[1,1,1,1]，仅返回一个数，z[[1,1,1,1]]则返回一个4*3*3*3的array（为什么？z才3*3*3*3，怎么会比z的还多？？）。
+
+27. broadcast的作用是使得不同shape的array在算术运算的时候shape相符，机制上broadcast使得循环在C中发生，这样就比在Python里发生要快。缺点是额外占用内存，所以不要滥用啦。
+
+28. 想要能够利用broadcast必须满足两个条件：从后向前匹配，同一维度上的数值相等，或者至少其中为1。维度数目不一定要求一样。如果是一维的则会自动往另外一个array数值相等或者为1的那个维度上靠。
+
+29. 预设结构模板的array（structured array或称record array）：元素是一组对象组成的tuple，类型已经指定。
+
+30. structured array的dtype参数类型有四种：a. 字符串，包括b1, i1, i2, i4, i8, u1, u2, u4, u8, f4, f8, c8, c16, a，分别代表bytes，整数，无符号整数，浮点数和byte长度一定的字符串，还有一些数：int8,...,uint8,...,float32, float64, complex64, complex128。定义的时候很灵活，比如：x = np.zeros(3, dtype=’3int8, float32, (2,3)float64’)，返回的array长度为3，元素是array([([0, 0, 0], 0.0, [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])。
+
+先告一段落吧，ms User Guide看完第二章就没我啥事儿了，后面都是扩展之类的，离那境界还挺远呢。
