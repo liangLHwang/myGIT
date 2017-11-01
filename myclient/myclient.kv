@@ -1,0 +1,141 @@
+#-*- coding:utf-8 -*-
+# In myclient.kv
+#:import C kivy.utils.get_color_from_hex
+#ScreenManager:
+#    MainScreen:
+#    SelectScreen:
+
+<MainScreen>:
+    name: 'main'
+
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint: (1, 0.1)
+        pos_hint: {'top':0, 'top':1}
+
+        Label:
+            id: tag_id
+            text: 'NO Tag Found'
+            font_size: '15sp'
+            color: C('#000000')
+            size_hint: (1, 0.1)
+
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint: (0.1, 0.05)
+        pos_hint: {'top':0, 'top':0.9}
+
+        Label:
+            text: 'Strong'
+            font_size: '15sp'
+            color: C('#000000')
+            size_hint: (1, 0.05)
+
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint: (0.1, 0.05)
+        pos_hint: {'top':0, 'top':0.35}
+
+        Label:
+            text: 'Weak'
+            font_size: '15sp'
+            color: C('#000000')
+            size_hint: (1, 0.05)
+
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint: (1, 0.21)
+        pos_hint: {'top':0, 'top':0.21}
+
+        Label:
+            id: instruction
+            text: 'Please move around the room.'
+            font_size: '15sp'
+            color: C('#000000')
+            size_hint: (1, 0.05)
+
+        GridLayout:
+            orientation: 'horizontal'
+            padding: 2
+            spacing: 2
+            size_hint: (1, 0.15)
+            cols: 4
+            rows: 1
+            Button:
+                id: rfid_reader_connect
+                text: 'Connect'
+                on_release: root.connect_disconnect()
+
+            Button:
+                id: rfid_rx
+                text: 'Start'
+                on_release: root.start_stop()
+
+            Button:
+                text: 'Clear'
+                on_release: root.ClearCanvas()
+
+            Button:
+                text: 'Manage'
+                on_release: root.ManageTags()
+
+<myEPCButton@ToggleButton>:
+    on_state: app.root.get_screen('epc').MyOnState(self)
+
+<SelectScreen>:
+    name: 'epc'
+
+    BoxLayout:
+        orientation: 'horizontal'
+        size_hint: (1, 0.15)
+        pos_hint: {'top':0, 'top':1}
+
+        Label:
+            id: w_text_epc_id
+            text: 'None EPC selected'
+            #font_size: '15sp'
+            color: C('#000000')
+
+        TextInput:
+            id: w_text_epc_note
+            text: '中文'
+            #font_name: './DroidSansFallback.ttf'
+
+        Button:
+            text: 'Write Tag'
+            on_release: app.root.get_screen('main').WriteTagNote()
+
+    AnchorLayout:
+        anchor_x: 'center'
+        anchor_y: 'bottom'
+        orientation: 'vertical'
+        size_hint: (1, 0.6)
+        pos_hint: {'top':0, 'top':0.85}
+        MyGrid:
+            id: m_grid
+            size_hint: (0.9, 1)
+            cols: 1
+            spacing: '2dp'
+
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint: (1, 0.1)
+        pos_hint: {'top':0, 'top':0.25}
+        Label:
+            id: epc_top
+            text: 'Found the Tags. None is selected.'
+            font_size: '15sp'
+            color: C('#000000')
+
+    BoxLayout:
+        orientation: 'horizontal'
+        size_hint: (1, 0.15)
+        pos_hint: {'top':0, 'top':0.15}
+
+        Button:
+            text: 'Read Tags'
+            on_release: root.ReadTags()
+
+        Button:
+            text: 'Back'
+            on_release: root.Back2Main()
