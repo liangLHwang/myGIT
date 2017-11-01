@@ -33,7 +33,7 @@ def Log2File(text, clr = False, file_name = "log.txt"):
     fid.close()
     return
 
-def MYLOG(text, mode = 0):
+def MYLOG(text, mode = 1):
     if mode == 0:
         print(text)
     elif mode == 1:
@@ -98,7 +98,7 @@ class RfidComm:
             self.last_cmd = cmd_id
             if not self.dummy_data:
                 try:
-                    self.s.sendall(send_msg.encode())
+                    self.s.sendall(send_msg)
                 #except socket.error:
                 except Exception, e:
                     MYLOG('TX Connection fail!')
@@ -184,7 +184,7 @@ class RfidComm:
                     self.epc_all.append(epc_rx+':'+epc_note)
             sm.get_screen('epc').ids.m_grid.DisplayData(self.epc_all)
         elif block_items[0] == 'C33C':
-            #MYLOG('write tag: '+block_items[1])
+            MYLOG('write tag: '+block_items[1])
             sm.get_screen('epc').ids.epc_top.text = 'write tag: '+self.epc_id_w+':'+self.epc_note_w+': '+block_items[1]
         elif block_items[0] == 'F00F':
             #MYLOG("Heart beat packet")
@@ -395,6 +395,7 @@ class SelectScreen(Screen):
             sm.get_screen('main').rfid.epc_target = epc12
             self.ids.w_text_epc_id.text = epc12
             self.ids.w_text_epc_note.text = epc_note
+
     def Back2Main(self):
         sm.get_screen('main').is_showing = sm.get_screen('main').is_showing_s
         sm.current = 'main'
@@ -414,11 +415,9 @@ class MyClientApp(App):
     def build(self):
         return sm
 
-
 if __name__ == '__main__':
     from kivy.core.window import Window
     Window.clearcolor = get_color_from_hex('#FFFFFF')
     Log2File("Application Start", clr=True)
-    Window.fullscreen=1#不设置全屏
-    Window.size=(960,540)#窗口大小
+    #Window.size=(960,540)#窗口大小
     MyClientApp().run()
