@@ -72,17 +72,17 @@
                 on_release: root.start_stop()
 
             Button:
-                text: 'Clear'
-                on_release: root.ClearCanvas()
+                text: 'Select'
+                on_release: root.ManageTags()
 
             Button:
-                text: 'Manage'
-                on_release: root.ManageTags()
+                text: 'Read/Write'
+                on_release: root.ReadWriteTags()
 
 <myEPCButton@ToggleButton>:
     on_state: app.root.get_screen('epc').MyOnState(self)
 
-<SelectScreen>:
+<RWScreen>:
     name: 'epc'
 
     BoxLayout:
@@ -98,7 +98,7 @@
 
         TextInput:
             id: w_text_epc_note
-            text: '中文'
+            text: 'in English'
             #font_name: './DroidSansFallback.ttf'
 
         Button:
@@ -136,6 +136,67 @@
             text: 'Read Tags'
             on_release: root.ReadTags()
 
+        Button:
+            text: 'Back'
+            on_release: root.Back2Main()
+
+<ListScreen>:
+    name: 'lists'
+
+    BoxLayout:
+        orientation: 'horizontal'
+        size_hint: (1, 0.15)
+        pos_hint: {'top':0, 'top':1}
+
+        Label:
+            text: 'Input tag note to find'
+            #font_size: '15sp'
+            color: C('#000000')
+
+        TextInput:
+            id: note_to_find
+            text: '*'
+
+        Button:
+            text: 'Find'
+            on_release: root.onFindTags()
+
+    ScrollView:
+        id: scrlv
+        #size_hint: (None, None)
+        #size: (500, 320)
+        size_hint: (1, 0.5)
+        #pos_hint: {'center_x': .5, 'center_y': .5}
+        pos_hint: {'top':0, 'top':0.8}
+        do_scroll_x: False
+        MyGrid2:
+            id: grid_lists
+            orientation: 'vertical'
+            cols: 2
+            padding: 5
+            spacing: 5
+            size_hint: (None, None)
+            #row_default_height: '40dp'
+            #row_force_default: True
+
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint: (1, 0.1)
+        pos_hint: {'top':0, 'top':0.25}
+        Label:
+            id: lists_info
+            text: 'Please select the target TAG to find.'
+            font_size: '15sp'
+            color: C('#000000')
+
+    BoxLayout:
+        orientation: 'horizontal'
+        size_hint: (1, 0.15)
+        pos_hint: {'top':0, 'top':0.15}
+
+        Button:
+            text: 'Select Target'
+            on_release: root.SelTargetEPC()
         Button:
             text: 'Back'
             on_release: root.Back2Main()

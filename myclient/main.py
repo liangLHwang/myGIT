@@ -14,6 +14,7 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.button import Button
+from kivy.uix.scrollview import ScrollView
 
 import time
 from math import ceil
@@ -33,7 +34,7 @@ def Log2File(text, clr = False, file_name = "log.txt"):
     fid.close()
     return
 
-def MYLOG(text, mode = 1):
+def MYLOG(text, mode = 0):
     if mode == 0:
         print(text)
     elif mode == 1:
@@ -60,7 +61,7 @@ class RfidComm:
         self.epc_id_w = ''
         self.epc_note_w = ''
         self.last_cmd = 0
-        self.dummy_data = False
+        self.dummy_data = True
 
     def ConnectRfidModule(self):
         self.is_connected = True
@@ -174,6 +175,7 @@ class RfidComm:
                             self.data_recv.append(rec)
         elif block_items[0] == 'B44B':
             self.epc_all = []
+            epc_recs = []
             for b in range(1, len(block_items)):
                 items = block_items[b].split(':')
                 epc_rx = items[0]
@@ -181,11 +183,17 @@ class RfidComm:
                 if epc_rx == "wrong":
                     MYLOG('no tag is found.')
                 else:
+                    MYLOG(epc_rx+':'+epc_note)
                     self.epc_all.append(epc_rx+':'+epc_note)
+                    epc_recs.append([epc_rx, epc_note])
             sm.get_screen('epc').ids.m_grid.DisplayData(self.epc_all)
+            sm.get_screen('lists').AddEPCRecord(epc_recs)
+            sm.get_screen('lists').UpdateGrid()
+            sm.get_screen('lists').SaveToFile()
         elif block_items[0] == 'C33C':
             MYLOG('write tag: '+block_items[1])
             sm.get_screen('epc').ids.epc_top.text = 'write tag: '+self.epc_id_w+':'+self.epc_note_w+': '+block_items[1]
+            sm.get_screen('epc').ReadTags()
         elif block_items[0] == 'F00F':
             #MYLOG("Heart beat packet")
             pass
@@ -209,7 +217,9 @@ class RfidComm:
             self.rssi += 10
             if self.rssi > -40: self.rssi -= 50
         elif self.last_cmd == 2:
-            recv_msg = 'B44B?112233445566778899AABBCC:table?111111111111111111111111:chairs'
+            recv_msg = 'B44B?112233445566778899AABBCC:table'+str(self.n_rx_msg)
+            recv_msg += '?111111111111111111111111:chair'+str(self.n_rx_msg)
+            recv_msg += '?xxxxxxxxxxxxxxxxxxxxxxxx:haha'+str(self.n_rx_msg)
             self.DecodeMsg(recv_msg)
         elif self.last_cmd == 3:
             recv_msg = 'C33C?OK'
@@ -330,11 +340,15 @@ class MainScreen(Screen):
         else:
             self.ids.rfid_rx.text = 'Start'
 
-    def ManageTags(self):
+    def ReadWriteTags(self):
         self.is_showing_s = self.is_showing
         self.is_showing = False
         sm.current = 'epc'
 
+    def ManageTags(self):
+        self.is_showing_s = self.is_showing
+        self.is_showing = False
+        sm.current = 'lists'
 
     def WriteTagNote(self):
         '''
@@ -379,7 +393,7 @@ class MyGrid(GridLayout):
                 item = Label(text=" ")
                 self.add_widget(item)
 
-class SelectScreen(Screen):
+class RWScreen(Screen):
     def MyOnState(self, togglebutton):
         tb = togglebutton
         #print(tb,tb.state,tb.text)
@@ -405,11 +419,127 @@ class SelectScreen(Screen):
         sm.get_screen('main').rfid.TxToServer(2)
         sm.get_screen('main').rfid.RxFromServer()
 
+class MyListButton(Button):
+    def __init__(self,**kwargs):
+        super(MyListButton,self).__init__(**kwargs)
+        self.epc_id = ''
+        self.epc_note = 'NA'
+
+    def on_release(self):
+        sm.get_screen('lists').onClickEPCButton(self)
+
+class MyGrid2(GridLayout):
+
+    def __init__(self, **kwargs):
+        super(MyGrid2, self).__init__(**kwargs)
+        # add button into that grid
+        for i in range(30):
+            lbl = Label(text=str(i), size=(50, 40), size_hint=(None, None), color=get_color_from_hex('#000000'))
+            self.add_widget(lbl)
+            btn = MyListButton(text='notes:'+str(i), size=(400, 40), size_hint=(None, None))
+            btn.epc_id = str(i)*12
+            btn.epc_note = str(i)+' notes'
+            self.add_widget(btn)
+        self.bind(minimum_height=self.setter('height'))
+
+    def DisplayData(self, epc_list):
+        self.clear_widgets()
+        for i in range(len(epc_list)):
+            lbl = Label(text=str(i), size=(50, 40), size_hint=(None, None), color=get_color_from_hex('#000000'))
+            self.add_widget(lbl)
+            btn = MyListButton(text=epc_list[i][1], size=(400, 40), size_hint=(None, None))
+            btn.epc_id = epc_list[i][0]
+            btn.epc_note = epc_list[i][1]
+            self.add_widget(btn)
+
+
+class ListScreen(Screen):
+    def __init__(self, **kwargs):
+        super(ListScreen, self).__init__(**kwargs)
+        self.epc_id = ''
+        self.epc_note = 'NA'
+        self.epc_list_all = []
+        self.rec_file_name = ''
+        self.LoadFromFile()
+
+    def LoadFromFile(self, file_name = './tag_data.txt'):
+        fid = open(file_name,'r')
+        self.rec_file_name = file_name
+        try:
+            lines = fid.readlines()
+            for line in lines:
+                items = line.strip('\n').split(':')
+                if len(items) == 2:
+                    #print(items[0]+':'+items[1]+'.')
+                    self.AddEPCRecord([[items[0], items[1]]])
+        finally:
+            fid.close()
+        self.UpdateGrid()
+
+    def UpdateGrid(self):
+        epc_filtered = self.FilterTags(self.ids.note_to_find.text)
+        self.ids.grid_lists.DisplayData(epc_filtered)
+
+    def AddEPCRecord(self, recs):
+        for ritem in recs:
+            if len(ritem) == 2:
+                if len(ritem[1]) > 0:
+                    rec = [ritem[0], ritem[1]]
+                else:
+                    rec = [ritem[0], 'NA']
+                for r in self.epc_list_all:
+                    if r[0] == rec[0]: #epc is the same
+                        self.epc_list_all.remove(r)
+                        MYLOG("replace "+r[0]+':'+r[1]+'.')
+                        break
+                self.epc_list_all.append(rec)
+                MYLOG("add "+rec[0]+':'+rec[1]+'.')
+
+    def SaveToFile(self, file_name = './tag_data.txt'):
+        MYLOG("saving to file:"),
+        MYLOG(len(self.epc_list_all))
+        fid = open(file_name,'w')
+        for item in self.epc_list_all:
+            fid.write(item[0]+':'+item[1]+'\n')
+        fid.close()
+
+    def FilterTags(self, rule):
+        res = []
+        r_items = rule.split('*')
+        for rec in self.epc_list_all:
+            is_match = True
+            for ri in r_items:
+                if len(ri)>0 and rec[1].find(ri) < 0:
+                    is_match = False
+                    break
+            if is_match:
+                res.append(rec)
+        return(res)
+
+    def Back2Main(self):
+        sm.get_screen('main').is_showing = sm.get_screen('main').is_showing_s
+        sm.current = 'main'
+
+    def SelTargetEPC(self):
+        if len(self.epc_id) == 24:
+            sm.get_screen('main').rfid.epc_target = self.epc_id
+            sm.get_screen('main').ids.tag_id.text = self.epc_note +'('+ self.epc_id +')'
+        self.Back2Main()
+
+    def onClickEPCButton(self, MyListButton):
+        mb = MyListButton
+        self.ids.lists_info.text = "Select target tag: "+mb.epc_note+'('+mb.epc_id+')'
+        self.epc_id = mb.epc_id
+        self.epc_note = mb.epc_note
+
+    def onFindTags(self):
+        self.UpdateGrid()
+
 # Create the screen manager
 sm = ScreenManager()
 sm.add_widget(MainScreen(name='main'))
-sm.add_widget(SelectScreen(name='epc'))
-
+sm.add_widget(RWScreen(name='epc'))
+sm.add_widget(ListScreen(name='lists'))
 
 class MyClientApp(App):
     def build(self):
@@ -419,5 +549,5 @@ if __name__ == '__main__':
     from kivy.core.window import Window
     Window.clearcolor = get_color_from_hex('#FFFFFF')
     Log2File("Application Start", clr=True)
-    #Window.size=(960,540)#窗口大小
+    Window.size=(960,540)#窗口大小
     MyClientApp().run()
